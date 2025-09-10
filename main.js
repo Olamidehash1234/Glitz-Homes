@@ -116,70 +116,110 @@
         const nextBtn = document.querySelector('.next-btn');
 
         let currentIndex = 0;
-        const images = Array.from(document.querySelectorAll('.gallery-item img')).map(img => img.src);
+        const items = Array.from(document.querySelectorAll('.gallery-item'));
 
         // Open lightbox
         galleryItems.forEach((item, index) => {
             item.addEventListener('click', () => {
-                lightbox.classList.add('active');
-                lightboxImg.src = images[index];
-                currentIndex = index;
-                updateNavigationButtons();
+                const isVideo = item.getAttribute('data-type') === 'video';
+                
+                if (isVideo) {
+                    const video = item.querySelector('video');
+                    openVideoLightbox(video.src);
+                } else {
+                    const img = item.querySelector('img');
+                    openImageLightbox(img.src, index);
+                }
             });
         });
 
-        // Close lightbox
-        lightboxClose.addEventListener('click', () => {
-            lightbox.classList.remove('active');
-        });
+        function openImageLightbox(src, index) {
+            lightbox.classList.add('active');
+            lightbox.classList.remove('video-active');
+            lightboxImg.src = src;
+            currentIndex = index;
+            updateNavigationButtons();
+        }
 
+        function openVideoLightbox(src) {
+            lightbox.classList.add('active', 'video-active');
+            const video = document.createElement('video');
+            video.src = src;
+            video.controls = true;
+            video.autoplay = true;
+            
+            const videoContainer = document.createElement('div');
+            videoContainer.className = 'lightbox-video';
+            videoContainer.appendChild(video);
+            
+            // Remove existing video if any
+            const existingVideo = lightbox.querySelector('.lightbox-video');
+            if (existingVideo) {
+                existingVideo.remove();
+            }
+            
+            lightbox.appendChild(videoContainer);
+            
+            // Hide navigation for videos
+            prevBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+        }
+
+        // Close lightbox
+        lightboxClose.addEventListener('click', closeLightbox);
         lightbox.addEventListener('click', (e) => {
             if (e.target === lightbox) {
-                lightbox.classList.remove('active');
+                closeLightbox();
             }
         });
 
+        function closeLightbox() {
+            lightbox.classList.remove('active', 'video-active');
+            const videoContainer = lightbox.querySelector('.lightbox-video');
+            if (videoContainer) {
+                videoContainer.remove();
+            }
+        }
+
         // Navigation
         function updateNavigationButtons() {
+            const imageItems = items.filter(item => item.getAttribute('data-type') !== 'video');
             prevBtn.style.display = currentIndex > 0 ? 'block' : 'none';
-            nextBtn.style.display = currentIndex < images.length - 1 ? 'block' : 'none';
+            nextBtn.style.display = currentIndex < imageItems.length - 1 ? 'block' : 'none';
         }
 
         prevBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (currentIndex > 0) {
-                currentIndex--;
-                lightboxImg.src = images[currentIndex];
-                updateNavigationButtons();
-            }
+            navigateGallery(-1);
         });
 
         nextBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (currentIndex < images.length - 1) {
-                currentIndex++;
-                lightboxImg.src = images[currentIndex];
+            navigateGallery(1);
+        });
+
+        function navigateGallery(direction) {
+            const imageItems = items.filter(item => item.getAttribute('data-type') !== 'video');
+            currentIndex += direction;
+            
+            if (currentIndex >= 0 && currentIndex < imageItems.length) {
+                const img = imageItems[currentIndex].querySelector('img');
+                lightboxImg.src = img.src;
                 updateNavigationButtons();
             }
-        });
+        }
 
         // Keyboard navigation
         document.addEventListener('keydown', (e) => {
             if (!lightbox.classList.contains('active')) return;
             
-            if (e.key === 'ArrowLeft' && currentIndex > 0) {
-                currentIndex--;
-                lightboxImg.src = images[currentIndex];
-                updateNavigationButtons();
+            if (e.key === 'ArrowLeft') {
+                navigateGallery(-1);
             }
-            
-            if (e.key === 'ArrowRight' && currentIndex < images.length - 1) {
-                currentIndex++;
-                lightboxImg.src = images[currentIndex];
-                updateNavigationButtons();
+            if (e.key === 'ArrowRight') {
+                navigateGallery(1);
             }
-            
             if (e.key === 'Escape') {
-                lightbox.classList.remove('active');
+                closeLightbox();
             }
         });
